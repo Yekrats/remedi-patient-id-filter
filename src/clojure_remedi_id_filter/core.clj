@@ -2,10 +2,11 @@
   (:gen-class)
   (:import (javax.swing JFrame JPanel JLabel JFileChooser)
            (java.awt Font)
-           (java.io File))
+           (java.io File)
+           (java.nio.file Files))
   (:require [clojure.data.csv :as csv]
-            [clojure.java.io :as io]))
-
+            [clojure.java.io :as io]
+            ))
 
 (def frame (JFrame. "REMEDI Patient ID Filter 2.0"))
 
@@ -44,18 +45,16 @@
 
   (let [result (.showOpenDialog fc panel)
         file (if (= result (JFileChooser/APPROVE_OPTION))
-                (.getAbsolutePath (.getSelectedFile fc))
+                (.getSelectedFile fc)
                 nil)]
-    (.setText label "Processing file.")
-    (println
-     (when file
-       (-> file
-           csv/read-csv
-           first)
-       ))
-  )
-
-
+    (.setText label (str "Processing file: " (.getDisplayName (.getSelectedFile fc))))
+    (println (class file))
+    ;(println
+    ; (when file
+    ;   (-> fc
+    ;       csv/read-csv
+    ;       first)))
+    )
 
   )
 
@@ -64,6 +63,7 @@
                "" "" "Always" "Continuous with Dose Limit" "" "" "" "" "" "" "" "" "" "NORepinephrine" "Unknown"
                "Alert Channel" "" "4.00" "mg" "250" "" "0.016" "mg/mL" "" "Continuous infusion" "" "112.5" "mL/h" ""
                "176.5" "No" "" "" "" "" "" "30.00" "mcg/min" "None" "" "" "" "" "1st" "Start" "" "5079"])
+
 (def stdata ["1" "2" "3" "a" "b" "c"])
 
 (defn blank-nth "Blanks data in a particular column ('col') and any other optional columns ('cols'). First column is zero."
@@ -76,3 +76,12 @@
         (concat $ (nthrest stdata (inc col)))
         (into [] $))
       data))
+
+(defn count-lines
+  "Takes in File (like from '.getSelectedFile fc') and outputs a linecount."
+  [file]
+  (when (class file)
+    (-> file
+        .toPath
+        Files/lines
+        .count)))
