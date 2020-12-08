@@ -18,12 +18,9 @@
 
 (def fc (JFileChooser.))
 
-(defn copy-csv [from to]
-  (with-open [reader (csv/read-csv from)
-              writer (csv/write-csv to)]
-    (->> (csv/read-csv reader)
-         (map #(rest (butlast %)))
-         (csv/write-csv writer))))
+
+(def removable-fields
+  ["PatientID" "OrderID" "PatientIdentifier"])
 
 (defn -main
   [& args]
@@ -73,15 +70,62 @@
         (take col $)
         (into [] $)
         (conj $ "")
-        (concat $ (nthrest stdata (inc col)))
+        (concat $ (nthrest data (inc col)))
         (into [] $))
       data))
 
 (defn count-lines
-  "Takes in File (like from '.getSelectedFile fc') and outputs a linecount."
+  "Takes in File (e.g. from '.getSelectedFile fc') and returns a linecount."
   [file]
   (when (class file)
     (-> file
         .toPath
         Files/lines
         .count)))
+
+(def test-header ["GroupID" "ID" "ClinicianID" "AlertType" "LogTime"
+                  "InfusionDeviceNumber" "Model" "SequenceID" "SnapshotID"
+                  "CareProfile" "InfusionDeviceVersion" "LogVersion"
+                  "DatasetName" "DatasetID" "FacilityID" "ModuleNumber" "Module"
+                  "AnesthesiaMode" "VolumeInfusion" "PatientID" "DisposableID"
+                  "ActionTaken" "LimitCheckMode" "ProgramType" "PumpState"
+                  "PatientHeight" "FieldLimit" "Above_Below" "HardSoft" "AlertLimit"
+                  "AlertValue" "PlusMinusLimit" "TimesLimit" "DrugName" "TherapyName"
+                  "Channel" "DrugQuantifier" "DrugAmount" "DrugUnit" "Diluent"
+                  "DrugDoseCalcBasis" "Concentration" "ConcentrationUnit" "OrderID"
+                  "ProgrammingType" "InfusionModifier" "Rate" "InfusionRateUnit"
+                  "RateCalcBasis" "VolumeToBeInfuse" "AllMode" "InfusionDuration"
+                  "PCAMaxLimit" "PCAMaxLimitPeriod" "PCALockoutInterval"
+                  "PCADoseQuantifier" "Dose" "DoseUnit" "InfusionDoseCalcBasis"
+                  "InitialPatientWeight" "PropPatientWeight" "WeightUnit" "BSA"
+                  "Res_1st_2nd" "StartMode" "NonInfusionCause" "TotalRecord"])
+                  ;  (nth (csv/read-csv (io/reader (.getSelectedFile fc))) 3)
+
+(defn find-removables [header]
+  (for [removable removable-fields
+        x (range (count header))
+        :when (= (nth header x) removable)]
+    x))
+
+(defn remove-fields [data header]
+  (reduce (fn [accum current] (blank-nth accum current))
+          data
+          (find-removables header)))
+
+(comment
+
+
+(defn copy-csv [from to]
+  (with-open [reader (csv/read-csv from)
+              writer (csv/write-csv to)]
+    (->> (csv/read-csv reader)
+         (map #(rest (butlast %)))
+         (csv/write-csv writer))))
+
+(reduce
+ (fn [accumulator current-item]  ; <-- accumulator is FIRST argument to function
+   ...)                          ; <-- your fn definition goes here
+ []                              ; <-- initial value for your accumulator
+ [:a :b])                        ; <-- collection to operate on
+
+  )
