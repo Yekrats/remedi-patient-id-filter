@@ -1,6 +1,6 @@
 (ns clojure-remedi-id-filter.core
   (:gen-class)
-  (:import (javax.swing JFrame JPanel JLabel JFileChooser)
+  (:import (javax.swing JFrame JPanel JLabel JFileChooser WindowConstants JOptionPane)
            (java.awt Font)
            (java.io File)
            (java.nio.file Files))
@@ -18,9 +18,7 @@
 
 (def fc (JFileChooser.))
 
-
-(def removable-fields
-  ["PatientID" "OrderID" "PatientIdentifier"])
+(def removable-fields  ["PatientID" "OrderID" "PatientIdentifier" "Patient Id"])
 
 (defn -main
   [& args]
@@ -28,17 +26,13 @@
   (doto frame
     (.setSize 800 800)
     (.setVisible true)
-    (.setContentPane panel))
+    (.setContentPane panel)
+    (.setDefaultCloseOperation WindowConstants/EXIT_ON_CLOSE))
   (.setFont label font)
   (.add panel label)
   (.revalidate label)
   (.setDialogTitle fc "Choose CSV file to filter")
   (.setCurrentDirectory fc (File. (System/getProperty "user.home")))
-
-;; if (result == JFileChooser.APPROVE_OPTION) {
-;;    File selectedFile = fileChooser.getSelectedFile();
-;;    System.out.println("Selected file: " + selectedFile.getAbsolutePath());
-;; } \\ Java code.
 
   (let [result (.showOpenDialog fc panel)
         file (if (= result (JFileChooser/APPROVE_OPTION))
@@ -52,16 +46,10 @@
     ;       csv/read-csv
     ;       first)))
     )
-
+    (JOptionPane/showMessageDialog nil "Files processed:" "Processed File" JOptionPane/INFORMATION_MESSAGE)
+    (.dispose frame)
   )
 
-(def testdata ["399477778" "9" "" "Resolution" "Oct 01, 2018 05:52:46 AM" "14433935" "Alaris™ System 8015" "598" "797"
-               "Adult ICU" "9.19.1.2" "2.0.0.0" "CHA 031418" "0223ba072-R" "CHA" "14439581" "LVP Module" "" "" "Unknown"
-               "" "" "Always" "Continuous with Dose Limit" "" "" "" "" "" "" "" "" "" "NORepinephrine" "Unknown"
-               "Alert Channel" "" "4.00" "mg" "250" "" "0.016" "mg/mL" "" "Continuous infusion" "" "112.5" "mL/h" ""
-               "176.5" "No" "" "" "" "" "" "30.00" "mcg/min" "None" "" "" "" "" "1st" "Start" "" "5079"])
-
-(def stdata ["1" "2" "3" "a" "b" "c"])
 
 (defn blank-nth "Blanks data in a particular column ('col') and any other optional columns ('cols'). First column is zero."
   [data col]
@@ -83,6 +71,44 @@
         Files/lines
         .count)))
 
+(defn find-removables [header]
+  (for [removable removable-fields
+        x (range (count header))
+        :when (= (nth header x) removable)]
+    x))
+
+(defn remove-fields [data header]
+  (reduce (fn [accum current] (blank-nth accum current))
+          data
+          (find-removables header)))
+
+(defn find-header "Finds the first line with over 10 entries. Returns the contents of that, and the number of lines."
+  [file]
+  (when (class file) ;; Are there actually contents in the file? Is it an opject yet?
+      (loop [line-num 0 text (nth (csv/read-csv (io/reader file)) 0) ]
+;        (println (str "line " line-num " text " text))
+        (if (>= (count text) 10)
+          (into (sorted-map) [[:header text] [:line line-num]])
+          (recur (inc line-num) (nth (csv/read-csv (io/reader file)) (inc line-num)))))))
+
+(comment
+
+(defn copy-csv [from to]
+  (with-open [reader (io/reader from)
+              writer (io/writer to)]
+    (->> (csv/read-csv reader)
+         (map #(rest (butlast %)))
+         (csv/write-csv writer))))
+
+  (def stdata ["1" "2" "3" "a" "b" "c"])
+
+
+(def testdata ["399477778" "9" "" "Resolution" "Oct 01, 2018 05:52:46 AM" "14433935" "Alaris™ System 8015" "598" "797"
+               "Adult ICU" "9.19.1.2" "2.0.0.0" "CHA 031418" "0223ba072-R" "CHA" "14439581" "LVP Module" "" "" "Unknown"
+               "" "" "Always" "Continuous with Dose Limit" "" "" "" "" "" "" "" "" "" "NORepinephrine" "Unknown"
+               "Alert Channel" "" "4.00" "mg" "250" "" "0.016" "mg/mL" "" "Continuous infusion" "" "112.5" "mL/h" ""
+               "176.5" "No" "" "" "" "" "" "30.00" "mcg/min" "None" "" "" "" "" "1st" "Start" "" "5079"])
+
 (def test-header ["GroupID" "ID" "ClinicianID" "AlertType" "LogTime"
                   "InfusionDeviceNumber" "Model" "SequenceID" "SnapshotID"
                   "CareProfile" "InfusionDeviceVersion" "LogVersion"
@@ -100,32 +126,4 @@
                   "InitialPatientWeight" "PropPatientWeight" "WeightUnit" "BSA"
                   "Res_1st_2nd" "StartMode" "NonInfusionCause" "TotalRecord"])
                   ;  (nth (csv/read-csv (io/reader (.getSelectedFile fc))) 3)
-
-(defn find-removables [header]
-  (for [removable removable-fields
-        x (range (count header))
-        :when (= (nth header x) removable)]
-    x))
-
-(defn remove-fields [data header]
-  (reduce (fn [accum current] (blank-nth accum current))
-          data
-          (find-removables header)))
-
-(comment
-
-
-(defn copy-csv [from to]
-  (with-open [reader (csv/read-csv from)
-              writer (csv/write-csv to)]
-    (->> (csv/read-csv reader)
-         (map #(rest (butlast %)))
-         (csv/write-csv writer))))
-
-(reduce
- (fn [accumulator current-item]  ; <-- accumulator is FIRST argument to function
-   ...)                          ; <-- your fn definition goes here
- []                              ; <-- initial value for your accumulator
- [:a :b])                        ; <-- collection to operate on
-
-  )
+)
