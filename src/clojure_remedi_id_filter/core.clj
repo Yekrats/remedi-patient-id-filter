@@ -39,12 +39,8 @@
                 (.getSelectedFile fc)
                 nil)]
     (.setText label (str "Processing file: " (.getDisplayName (.getSelectedFile fc))))
+
     (println (class file))
-    ;(println
-    ; (when file
-    ;   (-> fc
-    ;       csv/read-csv
-    ;       first)))
     )
     (JOptionPane/showMessageDialog nil "Files processed:" "Processed File" JOptionPane/INFORMATION_MESSAGE)
     (.dispose frame)
@@ -66,7 +62,7 @@
   "Takes in File (e.g. from '.getSelectedFile fc') and returns a linecount."
   [file]
   (when (class file)
-    (-> file
+    (-> file (comment )
         .toPath
         Files/lines
         .count)))
