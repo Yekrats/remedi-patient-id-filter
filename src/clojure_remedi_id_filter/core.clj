@@ -1,16 +1,24 @@
 (ns clojure-remedi-id-filter.core
   (:gen-class)
-  (:import (javax.swing JFrame JPanel JLabel JFileChooser WindowConstants JOptionPane)
-           (java.awt Font)
+  (:import (javax.swing JFrame JPanel JLabel JFileChooser WindowConstants
+                        JOptionPane JProgressBar BoxLayout)
+           (java.awt Font Component BorderLayout)
            (java.io File)
-           (java.nio.file Files))
+           (java.nio.file Files)
+           (javax.swing.filechooser FileNameExtensionFilter))
+
   (:require [clojure.data.csv :as csv]
             [clojure.java.io :as io]
-            ))
+
+            [clojure.string :as str]))
 
 (def frame (JFrame. "REMEDI Patient ID Filter 2.0"))
 
 (def panel (JPanel.))
+
+(def label-panel (JPanel.))
+
+(def pbar-panel (JPanel.))
 
 (def label (JLabel. "Choose CSV file to filter..."))
 
@@ -20,32 +28,71 @@
 
 (def removable-fields  ["PatientID" "OrderID" "PatientIdentifier" "Patient Id"])
 
+(def fnef (FileNameExtensionFilter. "CSV files", (into-array String ["csv"])))
+
+(def progress-bar (JProgressBar.))
+
+(defn selected-file []
+  (.getSelectedFile fc))
+
+(defn selected-file-full-path []
+  (when (selected-file) (.getAbsolutePath (.getSelectedFile fc))))
+
+(defn selected-file-name []
+  (when (selected-file) (.getDisplayName (.getSelectedFile fc))))
+
+(defn left [str]
+  (subs str 0 (- (count str) 4)))
+
+(defn selected-file-base-name []
+  (when (selected-file)
+    (-> (.getSelectedFile fc)
+        .getAbsolutePath
+        left)))
+
+(defn selected-file-name-processed []
+  (when (selected-file)
+    (str (selected-file-base-name) "_processed_.csv")))
+
 (defn -main
   [& args]
   (println "Hello, World! " args)
   (doto frame
-    (.setSize 800 800)
+    (.setSize 1200 800)
     (.setVisible true)
     (.setContentPane panel)
-    (.setDefaultCloseOperation WindowConstants/EXIT_ON_CLOSE))
+;    (.setContentPane pbar-panel)
+    (.setDefaultCloseOperation WindowConstants/DISPOSE_ON_CLOSE)
+;    (.setLayout (BorderLayout.))
+    )
+;  (.setLayout panel (BoxLayout. panel BoxLayout/Y_AXIS))
+;  (.setSize pbar-panel 750 200)
+  (.setSize panel 750 600)
+;  (.setValue progress-bar 0)
+;  (.setStringPainted progress-bar true)
+;  (.setVisible progress-bar true)
+;  (.add pbar-panel progress-bar BorderLayout/SOUTH)
+;  (.setVisible pbar-panel true)
   (.setFont label font)
   (.add panel label)
-  (.revalidate label)
+
+  (.setFileFilter fc fnef)
   (.setDialogTitle fc "Choose CSV file to filter")
   (.setCurrentDirectory fc (File. (System/getProperty "user.home")))
+  (.revalidate panel)
+;  (.revalidate pbar-panel)
+  (.revalidate label)
+;  (.revalidate progress-bar)
 
   (let [result (.showOpenDialog fc panel)
-        file (if (= result (JFileChooser/APPROVE_OPTION))
-                (.getSelectedFile fc)
-                nil)]
-    (.setText label (str "Processing file: " (.getDisplayName (.getSelectedFile fc))))
+        file (when (= result (JFileChooser/APPROVE_OPTION))
+               (.getSelectedFile fc))]
+    (.setText label (str "Processing file: " (selected-file-name)))
 
-    (println (class file))
     )
-    (JOptionPane/showMessageDialog nil "Files processed:" "Processed File" JOptionPane/INFORMATION_MESSAGE)
+  (JOptionPane/showMessageDialog nil (str  "Files processed:\n" (selected-file-name)) "Files processed." JOptionPane/INFORMATION_MESSAGE)
     (.dispose frame)
   )
-
 
 (defn blank-nth "Blanks data in a particular column ('col') and any other optional columns ('cols'). First column is zero."
   [data col]
@@ -60,12 +107,13 @@
 
 (defn count-lines
   "Takes in File (e.g. from '.getSelectedFile fc') and returns a linecount."
-  [file]
+  ([file]
   (when (class file)
-    (-> file (comment )
+    (-> file
         .toPath
         Files/lines
         .count)))
+  ([] (count-lines (.getSelectedFile fc))))
 
 (defn find-removables [header]
   (for [removable removable-fields
@@ -82,19 +130,26 @@
   [file]
   (when (class file) ;; Are there actually contents in the file? Is it an opject yet?
       (loop [line-num 0 text (nth (csv/read-csv (io/reader file)) 0) ]
-;        (println (str "line " line-num " text " text))
         (if (>= (count text) 10)
           (into (sorted-map) [[:header text] [:line line-num]])
           (recur (inc line-num) (nth (csv/read-csv (io/reader file)) (inc line-num)))))))
 
-(comment
-
 (defn copy-csv [from to]
   (with-open [reader (io/reader from)
               writer (io/writer to)]
-    (->> (csv/read-csv reader)
-         (map #(rest (butlast %)))
-         (csv/write-csv writer))))
+
+    ))
+(defn massage-data [data]
+
+  )
+
+;(defn read-write
+;  [] (read-write (.getSelectedFile fc) )
+;  [file] )
+
+(comment
+
+
 
   (def stdata ["1" "2" "3" "a" "b" "c"])
 
@@ -122,4 +177,5 @@
                   "InitialPatientWeight" "PropPatientWeight" "WeightUnit" "BSA"
                   "Res_1st_2nd" "StartMode" "NonInfusionCause" "TotalRecord"])
                   ;  (nth (csv/read-csv (io/reader (.getSelectedFile fc))) 3)
+
 )
