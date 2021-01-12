@@ -26,7 +26,7 @@
 
 (def fc (JFileChooser.))
 
-(def removable-fields  ["PatientID" "OrderID" "PatientIdentifier" "Patient Id"])
+(def removable-fields  ["PatientID" "OrderID" "PatientIdentifier" "Patient Id" "ClinicianID"])
 
 (def fnef (FileNameExtensionFilter. "CSV files", (into-array String ["csv"])))
 
@@ -85,16 +85,19 @@
 ;  (.revalidate progress-bar)
 
   (let [result (.showOpenDialog fc panel)
-        file (when (= result (JFileChooser/APPROVE_OPTION))
-               (.getSelectedFile fc))]
+        file-info (when (= result (JFileChooser/APPROVE_OPTION))
+                    (.getSelectedFile fc))
+        new-file  (str (selected-file-base-name) "_processed_.csv")]
     (.setText label (str "Processing file: " (selected-file-name)))
-
-    )
+    (with-open [reader (io/reader file-info) writer (io/writer new-file)]
+      (loop [file file header nil line-num 1]
+        )))
   (JOptionPane/showMessageDialog nil (str  "Files processed:\n" (selected-file-name)) "Files processed." JOptionPane/INFORMATION_MESSAGE)
     (.dispose frame)
   )
 
-(defn blank-nth "Blanks data in a particular column ('col') and any other optional columns ('cols'). First column is zero."
+  (defn blank-nth "Blanks data in a particular column ('col'). First column is zero.
+                   Inputs the data; outputs the same data with the one column blanked."
   [data col]
   (if (< col (count data))
       (as-> data $
@@ -115,13 +118,16 @@
         .count)))
   ([] (count-lines (.getSelectedFile fc))))
 
-(defn find-removables [header]
+(defn find-removables ; TALK
+  "Out of 'header' finds fields that match with the 'removable-fields' def.
+  Returns numbers of the columns which will be removable. First column is 0."
+  [header]
   (for [removable removable-fields
         x (range (count header))
         :when (= (nth header x) removable)]
     x))
 
-(defn remove-fields [data header]
+(defn remove-fields [data header] ; TALK
   (reduce (fn [accum current] (blank-nth accum current))
           data
           (find-removables header)))
@@ -146,18 +152,10 @@
 ;(defn read-write
 ;  [] (read-write (.getSelectedFile fc) )
 ;  [file] )
-
-(comment
-
-
-
-  (def stdata ["1" "2" "3" "a" "b" "c"])
-
-
-(def testdata ["399477778" "9" "" "Resolution" "Oct 01, 2018 05:52:46 AM" "14433935" "Alaris™ System 8015" "598" "797"
-               "Adult ICU" "9.19.1.2" "2.0.0.0" "CHA 031418" "0223ba072-R" "CHA" "14439581" "LVP Module" "" "" "Unknown"
+(def test-data ["399477778" "9" "REMOVE-ME-CLINICIAN-ID" "Resolution" "Oct 01, 2018 05:52:46 AM" "14433935" "Alaris™ System 8015" "598" "797"
+               "Adult ICU" "9.19.1.2" "2.0.0.0" "CHA 031418" "0223ba072-R" "CHA" "9999999" "LVP Module" "" "" "REMOVE-ME-PATIENTID"
                "" "" "Always" "Continuous with Dose Limit" "" "" "" "" "" "" "" "" "" "NORepinephrine" "Unknown"
-               "Alert Channel" "" "4.00" "mg" "250" "" "0.016" "mg/mL" "" "Continuous infusion" "" "112.5" "mL/h" ""
+               "Alert Channel" "" "4.00" "mg" "250" "" "0.016" "mg/mL" "REMOVE-ME-ORDERID" "Continuous infusion" "" "112.5" "mL/h" ""
                "176.5" "No" "" "" "" "" "" "30.00" "mcg/min" "None" "" "" "" "" "1st" "Start" "" "5079"])
 
 (def test-header ["GroupID" "ID" "ClinicianID" "AlertType" "LogTime"
@@ -176,6 +174,15 @@
                   "PCADoseQuantifier" "Dose" "DoseUnit" "InfusionDoseCalcBasis"
                   "InitialPatientWeight" "PropPatientWeight" "WeightUnit" "BSA"
                   "Res_1st_2nd" "StartMode" "NonInfusionCause" "TotalRecord"])
+
+(comment
+
+
+
+  (def stdata ["1" "2" "3" "a" "b" "c"])
+
+
+
                   ;  (nth (csv/read-csv (io/reader (.getSelectedFile fc))) 3)
 
 )
