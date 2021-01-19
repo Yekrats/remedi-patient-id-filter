@@ -54,9 +54,64 @@
   (when (selected-file)
     (str (selected-file-base-name) "_processed_.csv")))
 
+(defn find-header
+  "Finds the first line with over 10 entries. Returns the contents of that,
+  and the number of lines."
+  [file]
+  (when (class file) ;; Are there actually contents in the file? Is it an opject yet?
+      (loop [line-num 0 text (nth (csv/read-csv (io/reader file)) 0) ]
+        (if (>= (count text) 10)
+          (into {} [[:header text] [:line line-num]])
+          (recur (inc line-num) (nth (csv/read-csv (io/reader file)) (inc line-num)))))))
+
+
+  (defn blank-nth "Blanks data in a particular column ('col'). First column is zero.
+                   Inputs the data; outputs the same data with the one column blanked."
+  [data col]
+  (if (< col (count data))
+      (as-> data $
+        (take col $)
+        (into [] $)
+        (conj $ "")
+        (concat $ (nthrest data (inc col)))
+        (into [] $))
+      data))
+
+(defn count-lines
+  "Takes in File (e.g. from '.getSelectedFile fc') and returns a linecount."
+  ([file]
+  (when (class file)
+    (-> file
+        .toPath
+        Files/lines
+        .count)))
+  ([] (count-lines (.getSelectedFile fc))))
+
+(defn find-removables
+  "Out of 'header' finds fields that match with the 'removable-fields' def.
+  Returns numbers of the columns which will be removable. First column is 0."
+  [header]
+  (for [removable removable-fields
+        x (range (count header))
+        :when (= (nth header x) removable)]
+        x))
+
+(defn remove-fields [data header]
+  (reduce (fn [accum current] (blank-nth accum current))
+          data
+          (find-removables header)))
+
+
+(defn eval-line "Evaluates line, whether it is header, preheader, or data, and outputs the same line back proper appropriate formatting"
+  [data header]
+  (if (or (< (count data) 10) (seq (find-removables data)))
+    data
+    (remove-fields data header))
+  )
+
 (defn -main
   [& args]
-  (println "Hello, World! " args)
+  ; (println "Hello, World! " args)
   (doto frame
     (.setSize 1200 800)
     (.setVisible true)
@@ -87,71 +142,21 @@
   (let [result (.showOpenDialog fc panel)
         file-info (when (= result (JFileChooser/APPROVE_OPTION))
                     (.getSelectedFile fc))
-        new-file  (str (selected-file-base-name) "_processed_.csv")]
+        new-file  (str (selected-file-base-name) "_processed_.csv")
+        header-info (:header (find-header file-info))]
     (.setText label (str "Processing file: " (selected-file-name)))
+    (println (str "first header: " (first header-info)))
+
     (with-open [reader (io/reader file-info) writer (io/writer new-file)]
-      (loop [file file header nil line-num 1]
-        )))
-  (JOptionPane/showMessageDialog nil (str  "Files processed:\n" (selected-file-name)) "Files processed." JOptionPane/INFORMATION_MESSAGE)
-    (.dispose frame)
-  )
+      (as-> (csv/read-csv reader) $
+            (map #(eval-line % header-info) $)
+            (csv/write-csv writer $))))
 
-  (defn blank-nth "Blanks data in a particular column ('col'). First column is zero.
-                   Inputs the data; outputs the same data with the one column blanked."
-  [data col]
-  (if (< col (count data))
-      (as-> data $
-        (take col $)
-        (into [] $)
-        (conj $ "")
-        (concat $ (nthrest data (inc col)))
-        (into [] $))
-      data))
+    (JOptionPane/showMessageDialog nil (str  "Files processed:\n" (selected-file-name)) "Files processed." JOptionPane/INFORMATION_MESSAGE)
+    (.setDefaultCloseOperation frame JFrame/EXIT_ON_CLOSE) ;   frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE)
+    (.dispose frame))
 
-(defn count-lines
-  "Takes in File (e.g. from '.getSelectedFile fc') and returns a linecount."
-  ([file]
-  (when (class file)
-    (-> file
-        .toPath
-        Files/lines
-        .count)))
-  ([] (count-lines (.getSelectedFile fc))))
 
-(defn find-removables ; TALK
-  "Out of 'header' finds fields that match with the 'removable-fields' def.
-  Returns numbers of the columns which will be removable. First column is 0."
-  [header]
-  (for [removable removable-fields
-        x (range (count header))
-        :when (= (nth header x) removable)]
-    x))
-
-(defn remove-fields [data header] ; TALK
-  (reduce (fn [accum current] (blank-nth accum current))
-          data
-          (find-removables header)))
-
-(defn find-header "Finds the first line with over 10 entries. Returns the contents of that, and the number of lines."
-  [file]
-  (when (class file) ;; Are there actually contents in the file? Is it an opject yet?
-      (loop [line-num 0 text (nth (csv/read-csv (io/reader file)) 0) ]
-        (if (>= (count text) 10)
-          (into (sorted-map) [[:header text] [:line line-num]])
-          (recur (inc line-num) (nth (csv/read-csv (io/reader file)) (inc line-num)))))))
-
-(defn copy-csv [from to]
-  (with-open [reader (io/reader from)
-              writer (io/writer to)]
-
-    ))
-(defn massage-data [data]
-
-  )
-
-;(defn read-write
-;  [] (read-write (.getSelectedFile fc) )
-;  [file] )
 (def test-data ["399477778" "9" "REMOVE-ME-CLINICIAN-ID" "Resolution" "Oct 01, 2018 05:52:46 AM" "14433935" "Alaris™ System 8015" "598" "797"
                "Adult ICU" "9.19.1.2" "2.0.0.0" "CHA 031418" "0223ba072-R" "CHA" "9999999" "LVP Module" "" "" "REMOVE-ME-PATIENTID"
                "" "" "Always" "Continuous with Dose Limit" "" "" "" "" "" "" "" "" "" "NORepinephrine" "Unknown"
