@@ -10,7 +10,8 @@
   (:require [clojure.data.csv :as csv]
             [clojure.java.io :as io]
 
-            [clojure.string :as str]))
+            ;[clojure.string :as str]
+            ))
 
 (def frame (JFrame. "REMEDI Patient ID Filter 2.0"))
 
@@ -65,7 +66,7 @@
           (recur (inc line-num) (nth (csv/read-csv (io/reader file)) (inc line-num)))))))
 
 
-  (defn blank-nth "Blanks data in a particular column ('col'). First column is zero.
+(defn blank-nth "Blanks data in a particular column ('col'). First column is zero.
                    Inputs the data; outputs the same data with the one column blanked."
   [data col]
   (if (< col (count data))
@@ -111,7 +112,6 @@
 
 (defn -main
   [& args]
-  ; (println "Hello, World! " args)
   (doto frame
     (.setSize 1200 800)
     (.setVisible true)
@@ -145,7 +145,6 @@
         new-file  (str (selected-file-base-name) "_processed_.csv")
         header-info (:header (find-header file-info))]
     (.setText label (str "Processing file: " (selected-file-name)))
-    (println (str "first header: " (first header-info)))
 
     (with-open [reader (io/reader file-info) writer (io/writer new-file)]
       (as-> (csv/read-csv reader) $
@@ -156,6 +155,7 @@
     (.setDefaultCloseOperation frame JFrame/EXIT_ON_CLOSE) ;   frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE)
     (.dispose frame))
 
+(comment
 
 (def test-data ["399477778" "9" "REMOVE-ME-CLINICIAN-ID" "Resolution" "Oct 01, 2018 05:52:46 AM" "14433935" "Alaris™ System 8015" "598" "797"
                "Adult ICU" "9.19.1.2" "2.0.0.0" "CHA 031418" "0223ba072-R" "CHA" "9999999" "LVP Module" "" "" "REMOVE-ME-PATIENTID"
@@ -180,11 +180,7 @@
                   "InitialPatientWeight" "PropPatientWeight" "WeightUnit" "BSA"
                   "Res_1st_2nd" "StartMode" "NonInfusionCause" "TotalRecord"])
 
-(comment
 
-
-
-  (def stdata ["1" "2" "3" "a" "b" "c"])
 
 
 
