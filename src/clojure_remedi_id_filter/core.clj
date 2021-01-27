@@ -1,11 +1,15 @@
 (ns clojure-remedi-id-filter.core
   (:gen-class)
-  (:import (javax.swing JFrame JPanel JLabel JFileChooser WindowConstants
-                        JOptionPane JProgressBar BoxLayout)
-           (java.awt Font Component BorderLayout)
+  (:import (javax.swing JFrame JPanel JLabel JFileChooser WindowConstants JOptionPane
+;                        JProgressBar BoxLayout
+                        )
+           (java.awt Font
+;                     Component BorderLayout
+                     )
            (java.io File)
-           (java.nio.file Files)
-           (javax.swing.filechooser FileNameExtensionFilter))
+;           (java.nio.file Files)
+;          (javax.swing.filechooser FileNameExtensionFilter)
+           )
 
   (:require [clojure.data.csv :as csv]
             [clojure.java.io :as io]
@@ -60,14 +64,12 @@
           data
           (find-removables header)))
 
-
 (defn eval-line "Evaluates line, whether it is header, preheader, or data, and outputs the same line back proper appropriate formatting"
   [data header]
   (if (or (< (count data) 10) (seq (find-removables data)))
     data
     (remove-fields data header))
   )
-
 
 (defn -main
   []
@@ -78,7 +80,7 @@
   (.setSize panel 750 600)
   (.setFont label font)
   (.add panel label)
-  (println (System/getProperty "user.home"))
+;  (println (System/getProperty "user.home"))
   (.setCurrentDirectory fc (File. (System/getProperty "user.home")))
   (.revalidate panel)
   (.revalidate label)
@@ -109,4 +111,4 @@
   (.setDefaultCloseOperation frame JFrame/EXIT_ON_CLOSE)
   (.dispose frame)
   ;(System/exit 0)
-  )
+)
