@@ -112,6 +112,8 @@
 
 (defn -main
   [& args]
+  ; (println "Hello, World! " args)
+  (println (System/getProperty "user.home"))
   (doto frame
     (.setSize 1200 800)
     (.setVisible true)
@@ -133,6 +135,7 @@
 
   (.setFileFilter fc fnef)
   (.setDialogTitle fc "Choose CSV file to filter")
+  (println (System/getProperty "user.home"))
   (.setCurrentDirectory fc (File. (System/getProperty "user.home")))
   (.revalidate panel)
 ;  (.revalidate pbar-panel)
@@ -146,12 +149,15 @@
         header-info (:header (find-header file-info))]
     (.setText label (str "Processing file: " (selected-file-name)))
 
-    (with-open [reader (io/reader file-info) writer (io/writer new-file)]
-      (as-> (csv/read-csv reader) $
-            (map #(eval-line % header-info) $)
-            (csv/write-csv writer $))))
-
+    (when (.getSelectedFile fc)
+      (with-open [reader (io/reader file-info) writer (io/writer new-file)]
+                                 (as-> (csv/read-csv reader) $
+                                   (map #(eval-line % header-info) $)
+                                   (csv/write-csv writer $)))
     (JOptionPane/showMessageDialog nil (str  "Files processed:\n" (selected-file-name)) "Files processed." JOptionPane/INFORMATION_MESSAGE)
+      ))
+
+
     (.setDefaultCloseOperation frame JFrame/EXIT_ON_CLOSE) ;   frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE)
     (.dispose frame))
 
