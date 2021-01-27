@@ -10,16 +10,13 @@
   (:require [clojure.data.csv :as csv]
             [clojure.java.io :as io]
 
-            ;[clojure.string :as str]
-            ))
+            [clojure.string :as str]))
 
 (def frame (JFrame. "REMEDI Patient ID Filter 2.0"))
 
 (def panel (JPanel.))
 
 (def label-panel (JPanel.))
-
-(def pbar-panel (JPanel.))
 
 (def label (JLabel. "Choose CSV file to filter..."))
 
@@ -29,45 +26,16 @@
 
 (def removable-fields  ["PatientID" "OrderID" "PatientIdentifier" "Patient Id" "ClinicianID"])
 
-(def fnef (FileNameExtensionFilter. "CSV files", (into-array String ["csv"])))
-
-(def progress-bar (JProgressBar.))
-
-(defn selected-file []
-  (.getSelectedFile fc))
-
-(defn selected-file-full-path []
-  (when (selected-file) (.getAbsolutePath (.getSelectedFile fc))))
-
-(defn selected-file-name []
-  (when (selected-file) (.getDisplayName (.getSelectedFile fc))))
-
-(defn left [str]
+(defn left-minus-4 "Returns string of all but the last 4 characters, to remove the base extension."
+  [str]
   (subs str 0 (- (count str) 4)))
 
-(defn selected-file-base-name []
-  (when (selected-file)
-    (-> (.getSelectedFile fc)
-        .getAbsolutePath
-        left)))
+;  (def fnef (FileNameExtensionFilter. "CSV files", (into-array String ["csv"])))
 
-(defn selected-file-name-processed []
-  (when (selected-file)
-    (str (selected-file-base-name) "_processed_.csv")))
-
-(defn find-header
-  "Finds the first line with over 10 entries. Returns the contents of that,
-  and the number of lines."
-  [file]
-  (when (class file) ;; Are there actually contents in the file? Is it an opject yet?
-      (loop [line-num 0 text (nth (csv/read-csv (io/reader file)) 0) ]
-        (if (>= (count text) 10)
-          (into {} [[:header text] [:line line-num]])
-          (recur (inc line-num) (nth (csv/read-csv (io/reader file)) (inc line-num)))))))
-
+(def JFC-approve (JFileChooser/APPROVE_OPTION))
 
 (defn blank-nth "Blanks data in a particular column ('col'). First column is zero.
-                   Inputs the data; outputs the same data with the one column blanked."
+                  Inputs the data; outputs the same data with the one column blanked."
   [data col]
   (if (< col (count data))
       (as-> data $
@@ -77,16 +45,6 @@
         (concat $ (nthrest data (inc col)))
         (into [] $))
       data))
-
-(defn count-lines
-  "Takes in File (e.g. from '.getSelectedFile fc') and returns a linecount."
-  ([file]
-  (when (class file)
-    (-> file
-        .toPath
-        Files/lines
-        .count)))
-  ([] (count-lines (.getSelectedFile fc))))
 
 (defn find-removables
   "Out of 'header' finds fields that match with the 'removable-fields' def.
@@ -110,86 +68,45 @@
     (remove-fields data header))
   )
 
+
 (defn -main
-  [& args]
-  ; (println "Hello, World! " args)
-  (println (System/getProperty "user.home"))
-  (doto frame
-    (.setSize 1200 800)
-    (.setVisible true)
-    (.setContentPane panel)
-;    (.setContentPane pbar-panel)
-    (.setDefaultCloseOperation WindowConstants/DISPOSE_ON_CLOSE)
-;    (.setLayout (BorderLayout.))
-    )
-;  (.setLayout panel (BoxLayout. panel BoxLayout/Y_AXIS))
-;  (.setSize pbar-panel 750 200)
+  []
+  (.setSize frame 1200 800)
+  (.setVisible frame true)
+  (.setContentPane frame panel)
+  (.setDefaultCloseOperation frame WindowConstants/DISPOSE_ON_CLOSE)
   (.setSize panel 750 600)
-;  (.setValue progress-bar 0)
-;  (.setStringPainted progress-bar true)
-;  (.setVisible progress-bar true)
-;  (.add pbar-panel progress-bar BorderLayout/SOUTH)
-;  (.setVisible pbar-panel true)
   (.setFont label font)
   (.add panel label)
-
-  (.setFileFilter fc fnef)
-  (.setDialogTitle fc "Choose CSV file to filter")
   (println (System/getProperty "user.home"))
   (.setCurrentDirectory fc (File. (System/getProperty "user.home")))
   (.revalidate panel)
-;  (.revalidate pbar-panel)
   (.revalidate label)
-;  (.revalidate progress-bar)
-
   (let [result (.showOpenDialog fc panel)
-        file-info (when (= result (JFileChooser/APPROVE_OPTION))
+        approved? (= result JFC-approve)
+        old-file-object (when approved?
                     (.getSelectedFile fc))
-        new-file  (str (selected-file-base-name) "_processed_.csv")
-        header-info (:header (find-header file-info))]
-    (.setText label (str "Processing file: " (selected-file-name)))
+        old-file (when approved? (.getAbsolutePath old-file-object))
+        new-file (when approved? (str (left-minus-4 old-file) "_processed_.csv"))
+        old-file-short-name (when approved? (.getDisplayName old-file-object))
+        header-info (when approved?
+                      (loop [line-num 0 text (nth (csv/read-csv (io/reader old-file)) 0 )]
+                        (if (or (>= (count text) 10) (> line-num 10))
+                                text
+                                (recur (inc line-num) (nth (csv/read-csv (io/reader old-file)) (inc line-num))))))]
 
-    (when (.getSelectedFile fc)
-      (with-open [reader (io/reader file-info) writer (io/writer new-file)]
+    (when approved?
+      (.setText label (str "Processing file: " old-file-short-name ))
+
+      (with-open [reader (io/reader old-file) writer (io/writer new-file)]
                                  (as-> (csv/read-csv reader) $
                                    (map #(eval-line % header-info) $)
                                    (csv/write-csv writer $)))
-    (JOptionPane/showMessageDialog nil (str  "Files processed:\n" (selected-file-name)) "Files processed." JOptionPane/INFORMATION_MESSAGE)
-      ))
+      (JOptionPane/showMessageDialog nil (str  "File processed:\n" old-file-short-name)
+                                     "Files processed." JOptionPane/INFORMATION_MESSAGE)))
+; END OF LET BLOCK.
 
-
-    (.setDefaultCloseOperation frame JFrame/EXIT_ON_CLOSE) ;   frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE)
-    (.dispose frame))
-
-(comment
-
-(def test-data ["399477778" "9" "REMOVE-ME-CLINICIAN-ID" "Resolution" "Oct 01, 2018 05:52:46 AM" "14433935" "Alaris™ System 8015" "598" "797"
-               "Adult ICU" "9.19.1.2" "2.0.0.0" "CHA 031418" "0223ba072-R" "CHA" "9999999" "LVP Module" "" "" "REMOVE-ME-PATIENTID"
-               "" "" "Always" "Continuous with Dose Limit" "" "" "" "" "" "" "" "" "" "NORepinephrine" "Unknown"
-               "Alert Channel" "" "4.00" "mg" "250" "" "0.016" "mg/mL" "REMOVE-ME-ORDERID" "Continuous infusion" "" "112.5" "mL/h" ""
-               "176.5" "No" "" "" "" "" "" "30.00" "mcg/min" "None" "" "" "" "" "1st" "Start" "" "5079"])
-
-(def test-header ["GroupID" "ID" "ClinicianID" "AlertType" "LogTime"
-                  "InfusionDeviceNumber" "Model" "SequenceID" "SnapshotID"
-                  "CareProfile" "InfusionDeviceVersion" "LogVersion"
-                  "DatasetName" "DatasetID" "FacilityID" "ModuleNumber" "Module"
-                  "AnesthesiaMode" "VolumeInfusion" "PatientID" "DisposableID"
-                  "ActionTaken" "LimitCheckMode" "ProgramType" "PumpState"
-                  "PatientHeight" "FieldLimit" "Above_Below" "HardSoft" "AlertLimit"
-                  "AlertValue" "PlusMinusLimit" "TimesLimit" "DrugName" "TherapyName"
-                  "Channel" "DrugQuantifier" "DrugAmount" "DrugUnit" "Diluent"
-                  "DrugDoseCalcBasis" "Concentration" "ConcentrationUnit" "OrderID"
-                  "ProgrammingType" "InfusionModifier" "Rate" "InfusionRateUnit"
-                  "RateCalcBasis" "VolumeToBeInfuse" "AllMode" "InfusionDuration"
-                  "PCAMaxLimit" "PCAMaxLimitPeriod" "PCALockoutInterval"
-                  "PCADoseQuantifier" "Dose" "DoseUnit" "InfusionDoseCalcBasis"
-                  "InitialPatientWeight" "PropPatientWeight" "WeightUnit" "BSA"
-                  "Res_1st_2nd" "StartMode" "NonInfusionCause" "TotalRecord"])
-
-
-
-
-
-                  ;  (nth (csv/read-csv (io/reader (.getSelectedFile fc))) 3)
-
-)
+  (.setDefaultCloseOperation frame JFrame/EXIT_ON_CLOSE)
+  (.dispose frame)
+  ;(System/exit 0)
+  )
