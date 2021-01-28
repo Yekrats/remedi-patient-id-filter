@@ -104,8 +104,10 @@
                                  (as-> (csv/read-csv reader) $
                                    (map #(eval-line % header-info) $)
                                    (csv/write-csv writer $)))
-      (JOptionPane/showMessageDialog nil (str  "File processed:\n" old-file-short-name)
-                                     "Files processed." JOptionPane/INFORMATION_MESSAGE)))
+      (JOptionPane/showMessageDialog nil (str  "File processed:\n" old-file-short-name "\n\nSee new file:\n" new-file)
+                                     (str "File processed.") JOptionPane/INFORMATION_MESSAGE)
+
+      ))
 ; END OF LET BLOCK.
 
   (.setDefaultCloseOperation frame JFrame/EXIT_ON_CLOSE)
